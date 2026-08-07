@@ -34,6 +34,8 @@
 > Windows 首次朗读会自动加载内置离线语音（华研），无需额外配置。
 > Android 需要 Android 10+（API 29+）。
 
+📚 完整文档见 [`docs/`](docs/README.md)（同步 GitHub Wiki）。
+
 ---
 
 ## 🚀 快速使用
