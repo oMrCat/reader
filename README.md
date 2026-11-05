@@ -99,6 +99,8 @@ flutter build windows --release
 # 一并拷贝到 Release 目录（已包含在仓库 native/ 目录）
 ```
 
+> Windows 构建的完整步骤、必备环境与实测已知坑见 [`docs/BUILD-WINDOWS.md`](docs/BUILD-WINDOWS.md)。
+
 ### 项目结构
 ```
 lib/
