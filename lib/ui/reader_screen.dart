@@ -34,6 +34,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
   int _chapter = 0;
   bool _showBar = true;
   bool _loading = true;
+  String? _loadError;
   bool _ttsPlaying = false;
   final List<GlobalKey> _pageKeys = [];
   Timer? _saveTimer;
@@ -91,7 +92,18 @@ class _ReaderScreenState extends State<ReaderScreen> {
 
   Future<void> _load() async {
     final state = context.read<AppState>();
-    final session = await state.openBook(widget.book);
+    final BookSession session;
+    try {
+      session = await state.openBook(widget.book);
+    } catch (e) {
+      // 解析失败（如损坏/不合规的 EPUB）必须给用户反馈，而不是永远转圈。
+      if (!mounted) return;
+      setState(() {
+        _loadError = e.toString();
+        _loading = false;
+      });
+      return;
+    }
     if (!mounted) return;
     setState(() {
       _session = session;
@@ -361,6 +373,43 @@ class _ReaderScreenState extends State<ReaderScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_loadError != null) {
+      return Scaffold(
+        backgroundColor: _palette.background,
+        appBar: AppBar(
+          backgroundColor: _palette.background,
+          foregroundColor: _palette.text,
+          title: Text(widget.book.title, style: TextStyle(color: _palette.text)),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.error_outline,
+                    size: 48, color: _palette.text.withValues(alpha: 0.6)),
+                const SizedBox(height: 16),
+                Text(
+                  '书籍解析失败，文件可能已损坏或格式不受支持',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: _palette.text),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _loadError!,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: _palette.text.withValues(alpha: 0.6),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
     if (_loading || _session == null) {
       return Scaffold(
         backgroundColor: _palette.background,
