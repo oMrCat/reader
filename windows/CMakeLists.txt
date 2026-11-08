@@ -2,6 +2,12 @@
 cmake_minimum_required(VERSION 3.14)
 project(reader LANGUAGES CXX)
 
+# 中文 Windows（代码页 936）下，第三方插件源码里的 UTF-8 字符会触发
+# C4819 并被当作错误。强制 MSVC 按 UTF-8 解析源码与执行字符集。
+if(MSVC)
+  add_compile_options(/utf-8)
+endif()
+
 # The name of the executable created for the application. Change this to change
 # the on-disk name of your application.
 set(BINARY_NAME "reader")
@@ -65,9 +71,10 @@ include(flutter/generated_plugins.cmake)
 set(BUILD_BUNDLE_DIR "$<TARGET_FILE_DIR:${BINARY_NAME}>")
 # Make the "install" step default, as it's required to run.
 set(CMAKE_VS_INCLUDE_INSTALL_TO_DEFAULT_BUILD 1)
-if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-  set(CMAKE_INSTALL_PREFIX "${BUILD_BUNDLE_DIR}" CACHE PATH "..." FORCE)
-endif()
+# 无条件指向 exe 所在目录（in-place bundle）。原先用
+# CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT 判断，在部分 CMake/工具链
+# 组合下分支不生效，prefix 落到 C:\Program Files 导致非管理员构建失败。
+set(CMAKE_INSTALL_PREFIX "${BUILD_BUNDLE_DIR}" CACHE PATH "..." FORCE)
 
 set(INSTALL_BUNDLE_DATA_DIR "${CMAKE_INSTALL_PREFIX}/data")
 set(INSTALL_BUNDLE_LIB_DIR "${CMAKE_INSTALL_PREFIX}")
