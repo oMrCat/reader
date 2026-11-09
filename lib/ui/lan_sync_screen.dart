@@ -213,6 +213,9 @@ class _LanSyncScreenState extends State<LanSyncScreen>
 
     final result = await FilePicker.platform.pickFiles(
       allowMultiple: true,
+      // SAF 拷贝到缓存的文件在某些机型上为 0 字节，必须带出数据本身，
+      // 否则会"发送成功"但接收端收到空文件。
+      withData: true,
       type: FileType.custom,
       allowedExtensions: const [
         'txt', 'epub', 'mobi', 'azw3', 'html', 'htm', 'md', 'markdown', 'fb2',
@@ -221,11 +224,12 @@ class _LanSyncScreenState extends State<LanSyncScreen>
     );
     if (result == null || result.files.isEmpty) return;
     final files = result.files
-        .map((f) => f.path)
-        .whereType<String>()
-        .where((e) => FormatDetector.detectFormat(e) != null)
+        .where((f) => FormatDetector.detectFormat(f.name) != null)
         .toList();
-    if (files.isEmpty) return;
+    if (files.isEmpty) {
+      setState(() => _sendResult = '所选文件没有支持的格式');
+      return;
+    }
 
     setState(() {
       _sending = true;
@@ -240,8 +244,18 @@ class _LanSyncScreenState extends State<LanSyncScreen>
         final client = HttpClient()
           ..connectionTimeout = const Duration(seconds: 10);
         final req = await client.putUrl(uri);
-        req.headers.set('X-Filename', Uri.encodeComponent(p.basename(f)));
-        await req.addStream(File(f).openRead());
+        req.headers.set('X-Filename', Uri.encodeComponent(f.name));
+        final bytes = f.bytes;
+        if (bytes != null && bytes.isNotEmpty) {
+          req.add(bytes);
+        } else if (f.path != null && File(f.path!).lengthSync() > 0) {
+          await req.addStream(File(f.path!).openRead());
+        } else {
+          // 无数据可发：宁可报失败也不发空请求
+          client.close();
+          fail++;
+          continue;
+        }
         final resp = await req.close();
         await resp.drain<void>();
         client.close();
